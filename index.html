@@ -65,34 +65,30 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
 (() => {
 "use strict";
 
 /* ═══════════════════════════════════════════
-   SUPABASE — official JS client
+   LEADERBOARD — Google Apps Script
+   Paste your deployed web app URL below
 ═══════════════════════════════════════════ */
-const SUPABASE_URL     = "https://yhebrznvwspxdefjgrj.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InloZWJyenZudndzcHhkZWZqZ3JqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg4NDg1OTIsImV4cCI6MjEwNDQyNDU5Mn0.DIL7uKfKffLExFsq7NuTu2Wqx1rhTzAAUWrCL9-YpDs";
-const _sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw5ZYQrUSQovywXJBnliuWDBXKVDe2Z82V5rp5QJwQbcaatA4cpj08_NWjkzZxdwHQY/exec";
 /* ══════════════════════════════════════════ */
 
-/* ---------- Supabase helpers ---------- */
+/* ---------- Leaderboard helpers ---------- */
 async function fetchLeaderboard(){
-  const { data, error } = await _sb
-    .from("leaderboard")
-    .select("name, score")
-    .order("score", { ascending: false })
-    .limit(10);
-  if (error) { console.error("fetchLeaderboard:", error); throw error; }
-  return data;
+  const res = await fetch(SCRIPT_URL + "?action=get&cachebust=" + Date.now());
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  const text = await res.text();
+  return JSON.parse(text);
 }
 async function submitScore(name, score){
-  const { error } = await _sb
-    .from("leaderboard")
-    .insert({ name: name.trim(), score });
-  if (error) { console.error("submitScore:", error); throw error; }
+  const url = SCRIPT_URL + "?action=post&name=" + encodeURIComponent(name.trim()) + "&score=" + encodeURIComponent(score);
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  const text = await res.text();
+  return JSON.parse(text);
 }
 
 /* ---------- overlay helpers ---------- */
