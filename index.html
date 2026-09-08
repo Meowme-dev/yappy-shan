@@ -6,8 +6,8 @@
 <title>Yappy Shan</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
-  html,body{height:100%;background:#FFD9EC;display:flex;align-items:center;justify-content:center;font-family:ui-rounded,"Hiragino Maru Gothic ProN",ui-sans-serif,system-ui,-apple-system,sans-serif;overflow:hidden;touch-action:manipulation;-webkit-tap-highlight-color:transparent;}
-  #wrap{position:relative;height:100vh;height:100dvh;aspect-ratio:2/3;max-width:100vw;box-shadow:0 0 0 2px #fff,0 24px 70px rgba(107,35,80,.35);}
+  html,body{height:100%;height:100dvh;background:#FF9FCE;display:flex;align-items:stretch;justify-content:center;font-family:ui-rounded,"Hiragino Maru Gothic ProN",ui-sans-serif,system-ui,-apple-system,sans-serif;overflow:hidden;touch-action:manipulation;-webkit-tap-highlight-color:transparent;}
+  #wrap{position:relative;width:100%;height:100%;height:100dvh;max-width:calc(100dvh * 2 / 3);margin:0 auto;}
   canvas{display:block;width:100%;height:100%;cursor:pointer;}
   #mute{position:absolute;top:10px;right:10px;width:34px;height:34px;border-radius:50%;border:2px solid #fff;background:rgba(255,111,165,.85);color:#fff;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
   #lb-btn{position:absolute;top:10px;left:10px;width:34px;height:34px;border-radius:50%;border:2px solid #fff;background:rgba(255,111,165,.85);color:#fff;font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
@@ -208,21 +208,86 @@ function resize(){
 }
 addEventListener("resize",resize);
 
-/* ---------- tiny synth ---------- */
+/* ---------- fairy synth ---------- */
 let ac=null,muted=false;
-function blip(freq,dur,type,vol){
-  if(muted)return;
+function initAc(){
+  if(!ac){ ac=new(window.AudioContext||window.webkitAudioContext)(); }
+  if(ac.state==="suspended") ac.resume();
+}
+/* sparkle: two sine oscillators a major third apart, short attack, quick fade */
+function fairySparkle(rootFreq, dur, vol){
+  if(muted) return;
   try{
-    ac=ac||new(window.AudioContext||window.webkitAudioContext)();
-    if(ac.state==="suspended")ac.resume();
-    const o=ac.createOscillator(),g=ac.createGain();
-    o.type=type;o.frequency.setValueAtTime(freq,ac.currentTime);
-    o.frequency.exponentialRampToValueAtTime(Math.max(60,freq*.7),ac.currentTime+dur);
-    g.gain.setValueAtTime(vol,ac.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.0001,ac.currentTime+dur);
-    o.connect(g).connect(ac.destination);o.start();o.stop(ac.currentTime+dur);
+    initAc();
+    const t=ac.currentTime;
+    [[rootFreq,1],[rootFreq*1.26,0.55],[rootFreq*1.5,0.35]].forEach(([freq,relVol],i)=>{
+      const o=ac.createOscillator(), g=ac.createGain();
+      o.type="sine";
+      o.frequency.setValueAtTime(freq*0.98, t+i*0.018);
+      o.frequency.linearRampToValueAtTime(freq*1.04, t+i*0.018+dur*0.3);
+      o.frequency.exponentialRampToValueAtTime(freq*1.01, t+i*0.018+dur);
+      g.gain.setValueAtTime(0, t+i*0.018);
+      g.gain.linearRampToValueAtTime(vol*relVol, t+i*0.018+0.018);
+      g.gain.exponentialRampToValueAtTime(0.0001, t+i*0.018+dur);
+      o.connect(g).connect(ac.destination);
+      o.start(t+i*0.018); o.stop(t+i*0.018+dur+0.05);
+    });
   }catch(e){}
 }
+/* wish-granted: ascending glittery arpeggio */
+function wishGranted(){
+  if(muted) return;
+  try{
+    initAc();
+    const t=ac.currentTime;
+    const notes=[523,659,784,1047,1319]; // C5 E5 G5 C6 E6
+    notes.forEach((freq,i)=>{
+      const o=ac.createOscillator(), g=ac.createGain();
+      o.type="sine";
+      o.frequency.setValueAtTime(freq, t+i*0.07);
+      o.frequency.linearRampToValueAtTime(freq*1.008, t+i*0.07+0.18);
+      g.gain.setValueAtTime(0, t+i*0.07);
+      g.gain.linearRampToValueAtTime(0.07, t+i*0.07+0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t+i*0.07+0.32);
+      // shimmer: add a faint octave above
+      const o2=ac.createOscillator(), g2=ac.createGain();
+      o2.type="sine"; o2.frequency.value=freq*2;
+      g2.gain.setValueAtTime(0, t+i*0.07);
+      g2.gain.linearRampToValueAtTime(0.025, t+i*0.07+0.02);
+      g2.gain.exponentialRampToValueAtTime(0.0001, t+i*0.07+0.22);
+      o.connect(g).connect(ac.destination);
+      o2.connect(g2).connect(ac.destination);
+      o.start(t+i*0.07); o.stop(t+i*0.07+0.4);
+      o2.start(t+i*0.07); o2.stop(t+i*0.07+0.3);
+    });
+  }catch(e){}
+}
+/* death tumble: descending chromatic slide */
+function deathSound(){
+  if(muted) return;
+  try{
+    initAc();
+    const t=ac.currentTime;
+    const o=ac.createOscillator(), g=ac.createGain();
+    o.type="sine";
+    o.frequency.setValueAtTime(540, t);
+    o.frequency.exponentialRampToValueAtTime(140, t+0.45);
+    g.gain.setValueAtTime(0.08, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t+0.48);
+    o.connect(g).connect(ac.destination);
+    o.start(t); o.stop(t+0.5);
+    // sad low thud
+    const o2=ac.createOscillator(), g2=ac.createGain();
+    o2.type="sine"; o2.frequency.setValueAtTime(120,t+0.05);
+    o2.frequency.exponentialRampToValueAtTime(60,t+0.35);
+    g2.gain.setValueAtTime(0.06,t+0.05);
+    g2.gain.exponentialRampToValueAtTime(0.0001,t+0.38);
+    o2.connect(g2).connect(ac.destination);
+    o2.start(t+0.05); o2.stop(t+0.4);
+  }catch(e){}
+}
+/* keep blip as alias so existing call-sites still work */
+function blip(freq,dur,type,vol){ fairySparkle(freq,dur,vol); }
 document.getElementById("mute").addEventListener("click",e=>{
   e.stopPropagation();muted=!muted;
   e.currentTarget.textContent=muted?"✕":"♪";
@@ -259,8 +324,8 @@ function addTower(){
 /* ---------- input ---------- */
 function flap(){
   if(overlay.classList.contains("show"))return;
-  if(state===READY){state=PLAYING;ship.vy=FLAP;ship.thrust=1;addTower();addTower();addTower();emit(7,150);blip(760,.1,"sine",.06);}
-  else if(state===PLAYING){ship.vy=FLAP;ship.thrust=1;emit(7,150);blip(720,.09,"sine",.05);}
+  if(state===READY){state=PLAYING;ship.vy=FLAP;ship.thrust=1;addTower();addTower();addTower();emit(7,150);fairySparkle(740,0.18,0.06);}
+  else if(state===PLAYING){ship.vy=FLAP;ship.thrust=1;emit(7,150);fairySparkle(700,0.15,0.05);}
   else if(state===DEAD&&tGlobal-deadAt>0.55&&!overlay.classList.contains("show")){reset();}
 }
 cv.addEventListener("pointerdown",e=>{e.preventDefault();flap();});
@@ -299,7 +364,7 @@ function update(dt){
     if(towers.length&&towers[towers.length-1].x<W-SPACING)addTower();
     if(towers.length&&towers[0].x<-TOWER_W-60)towers.shift();
     for(const t of towers){
-      if(!t.scored&&t.x+TOWER_W<ship.x){t.scored=true;score++;blip(980+Math.min(score,12)*26,.11,"triangle",.06);}
+      if(!t.scored&&t.x+TOWER_W<ship.x){t.scored=true;score++;if(score%5===0)wishGranted();else fairySparkle(880+Math.min(score,12)*30,0.22,0.07);}
       const top=t.c-t.gap/2,bot=t.c+t.gap/2;
       if(hitsRect(ship.x,ship.y,SHIP_R,t.x,-200,TOWER_W,top+200)||hitsRect(ship.x,ship.y,SHIP_R,t.x,bot,TOWER_W,SKY_H-bot))die();
     }
@@ -311,7 +376,7 @@ function update(dt){
 
 function die(){
   if(state!==PLAYING)return;
-  state=DEAD;deadAt=tGlobal;shake=1;flash=1;burst();blip(320,.3,"sine",.07);
+  state=DEAD;deadAt=tGlobal;shake=1;flash=1;burst();deathSound();
   const isNewBest=score>best;
   if(isNewBest){best=score;saveBest();}
   pendingScore=score;
