@@ -70,24 +70,30 @@
 "use strict";
 
 /* ═══════════════════════════════════════════
-   PASTE YOUR SUPABASE CREDENTIALS HERE
+   SUPABASE CREDENTIALS
 ═══════════════════════════════════════════ */
-const SUPABASE_URL = "https://yhebrzvnvwspxdefjgrj.supabase.co";          // e.g. https://xxxx.supabase.co
-const SUPABASE_ANON_KEY = "sb_publishable_ECQsY55VAQy8g0EzQgGJiQ_TsC9kkBJ"; // the long eyJ... string
+const SUPABASE_URL = "https://yhebrznvwspxdefjgrj.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_ECQsY55VAQy8g0EzQgGJiQ_TsC9kkBJ";
 /* ══════════════════════════════════════════ */
 
 /* ---------- Supabase helpers ---------- */
 async function dbFetch(endpoint, opts){
+  const headers = {
+    "apikey": SUPABASE_ANON_KEY,
+    "Authorization": "Bearer " + SUPABASE_ANON_KEY,
+    "Content-Type": "application/json",
+  };
+  if (opts?.prefer) headers["Prefer"] = opts.prefer;
+  const { prefer, ...restOpts } = opts || {};
   const res = await fetch(SUPABASE_URL + "/rest/v1/" + endpoint, {
-    headers:{
-      "apikey": SUPABASE_ANON_KEY,
-      "Authorization": "Bearer " + SUPABASE_ANON_KEY,
-      "Content-Type": "application/json",
-      "Prefer": opts?.prefer || ""
-    },
-    ...opts
+    ...restOpts,
+    headers
   });
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok){
+    const txt = await res.text();
+    console.error("Supabase error:", res.status, txt);
+    throw new Error(txt);
+  }
   return res.status === 204 ? null : res.json();
 }
 async function fetchLeaderboard(){
@@ -175,7 +181,7 @@ submitBtn.addEventListener("click", async e => {
     hideOverlay();
     await openLeaderboard();
   }catch(err){
-    errMsg.textContent = "Couldn't submit — check your connection.";
+    errMsg.textContent = "Error: " + (err.message || "couldn't submit — check your connection.");
   } finally {
     submitBtn.disabled = false; submitBtn.textContent = "Submit score";
   }
